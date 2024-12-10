@@ -1,20 +1,21 @@
-![Tests](https://github.com/designcomputer/mysql_mcp_server/actions/workflows/test.yml/badge.svg)
-# MySQL MCP Server
+![Tests](https://github.com/designcomputer/singlestore_mcp_server/actions/workflows/test.yml/badge.svg)
+# SingleStore MCP Server
 
-A Model Context Protocol (MCP) server that enables secure interaction with MySQL databases. This server allows AI assistants to list tables, read data, and execute SQL queries through a controlled interface, making database exploration and analysis safer and more structured.
+A Model Context Protocol (MCP) server that enables secure interaction with SingleStore databases. This server allows AI assistants to list tables, read data, and execute SQL queries through a controlled interface, making database exploration and analysis safer and more structured.
 
 ## Features
 
-- List available MySQL tables as resources
-- Read table contents
+- List available SingleStore tables as resources
+- Read table contents with support for various data formats (including BSON and JSON)
 - Execute SQL queries with proper error handling
+- Support for SingleStore-specific data types and functions
 - Secure database access through environment variables
 - Comprehensive logging
 
 ## Installation
 
 ```bash
-pip install mysql-mcp-server
+pip install singlestore-mcp-server
 ```
 
 ## Configuration
@@ -22,10 +23,11 @@ pip install mysql-mcp-server
 Set the following environment variables:
 
 ```bash
-MYSQL_HOST=localhost
-MYSQL_USER=your_username
-MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=your_database
+SINGLESTORE_HOST=your_workspace_host
+SINGLESTORE_PORT=3306  # Default SingleStore port
+SINGLESTORE_USER=your_username
+SINGLESTORE_PASSWORD=your_password
+SINGLESTORE_DATABASE=your_database
 ```
 
 ## Usage
@@ -37,19 +39,20 @@ Add this to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "mysql": {
+    "singlestore": {
       "command": "uv",
       "args": [
         "--directory", 
-        "path/to/mysql_mcp_server",
+        "path/to/singlestore_mcp_server",
         "run",
-        "mysql_mcp_server"
+        "singlestore_mcp_server"
       ],
       "env": {
-        "MYSQL_HOST": "localhost",
-        "MYSQL_USER": "your_username",
-        "MYSQL_PASSWORD": "your_password",
-        "MYSQL_DATABASE": "your_database"
+        "SINGLESTORE_HOST": "your_workspace_host",
+        "SINGLESTORE_PORT": "3306",
+        "SINGLESTORE_USER": "your_username",
+        "SINGLESTORE_PASSWORD": "your_password",
+        "SINGLESTORE_DATABASE": "your_database"
       }
     }
   }
@@ -63,15 +66,15 @@ Add this to your `claude_desktop_config.json`:
 pip install -r requirements.txt
 
 # Run the server
-python -m mysql_mcp_server
+python -m singlestore_mcp_server
 ```
 
 ## Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mysql_mcp_server.git
-cd mysql_mcp_server
+git clone https://github.com/yourusername/singlestore_mcp_server.git
+cd singlestore_mcp_server
 
 # Create virtual environment
 python -m venv venv
@@ -84,6 +87,13 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+## SingleStore-Specific Features
+
+- Support for BSON data type and operations
+- Native JSON handling with SingleStore JSON functions
+- Support for SingleStore Kai (MongoDB API compatibility)
+- Proper handling of SingleStore-specific data types
+
 ## Security Considerations
 
 - Never commit environment variables or credentials
@@ -95,14 +105,14 @@ pytest
 
 This MCP server requires database access to function. For security:
 
-1. **Create a dedicated MySQL user** with minimal permissions
-2. **Never use root credentials** or administrative accounts
+1. **Create a dedicated SingleStore user** with minimal permissions
+2. **Never use admin credentials** or administrative accounts
 3. **Restrict database access** to only necessary operations
 4. **Enable logging** for audit purposes
 5. **Regular security reviews** of database access
 
-See [MySQL Security Configuration Guide](https://github.com/designcomputer/mysql_mcp_server/blob/main/SECURITY.md) for detailed instructions on:
-- Creating a restricted MySQL user
+See [SingleStore Security Configuration Guide](https://github.com/designcomputer/singlestore_mcp_server/blob/main/SECURITY.md) for detailed instructions on:
+- Creating a restricted SingleStore user
 - Setting appropriate permissions
 - Monitoring database access
 - Security best practices

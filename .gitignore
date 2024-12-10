@@ -1,24 +1,44 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 wheels/
-*.egg-info
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Virtual environments
-.venv
-Lib/
-Scripts/
+# Virtual Environment
+venv/
+ENV/
+env/
 
-# Development environment
-.python-version
-uv.lock
-
-# IDE settings (optional)
-.vscode/
+# IDE
 .idea/
+.vscode/
+*.swp
+*.swo
 
-# Distribution directories
-*.dist-info/
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# Test coverage
+.coverage
+htmlcov/
 
