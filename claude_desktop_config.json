@@ -1,0 +1,43 @@
+{
+  "mcpServers": {
+    "singlestore": {
+      "command": "/bin/bash",
+      "args": [
+        "-c",
+        "source /Users/madhukarkumar/Dropbox/madhukar/git_repos/singlestore_mcp_server/.venv/bin/activate && python -m singlestore_mcp_server.server"
+      ],
+      "cwd": "/Users/madhukarkumar/Dropbox/madhukar/git_repos/singlestore_mcp_server",
+      "env": {
+        "SINGLESTORE_HOST": "svc-56441794-b2ba-46ad-bc0b-c3d5810a45f4-dml.aws-oregon-3.svc.singlestore.com",
+        "SINGLESTORE_PORT": "3306",
+        "SINGLESTORE_USER": "admin",
+        "SINGLESTORE_PASSWORD": "SingleStore2024",
+        "SINGLESTORE_DATABASE": "s2_tpch_optimized",
+        "PYTHONPATH": "/Users/madhukarkumar/Dropbox/madhukar/git_repos/singlestore_mcp_server",
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/madhukarkumar/Desktop"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "BSAc42cmfG2pZAxrKB8ObDoHoQYq_9S"
+      }      
+    }
+  },
+  "mcps": {
+    "singlestore": {
+      "name": "singlestore",
+      "url": "http://localhost:8000",
+      "type": "http"
+    }
+  }
+} 

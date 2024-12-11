@@ -4,6 +4,11 @@ from typing import Dict, List, Optional, Any
 import singlestoredb as s2
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import json
+import mcp.server
+import mcp.server.models
+import mcp.server.stdio
+import mcp.types as types
 
 # Configure logging with INFO level to track all database operations
 logging.basicConfig(level=logging.INFO)
@@ -67,32 +72,15 @@ def get_db_connection():
         logger.error(f"Database connection error: {str(e)}")
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-@app.get("/resources")
-async def list_resources() -> List[Resource]:
-    """
-    Lists all available tables in the database as MCP resources.
-    
-    Returns:
-        List[Resource]: List of available database tables with their metadata
-    
-    Example Response:
-        [
-            {
-                "id": "users",
-                "type": "table",
-                "attributes": {
-                    "name": "users",
-                    "type": "BASE TABLE",
-                    "comment": "User accounts table",
-                    "created_at": "2024-03-20T10:00:00"
-                }
-            }
-        ]
-    """
+# Create MCP server instance
+server = mcp.server.Server("singlestore-server")
+
+# Add resource capabilities
+@server.list_resources()
+async def handle_list_resources() -> list[types.Resource]:
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
-            # Query to get tables and their details from information schema
             cur.execute("""
                 SELECT 
                     TABLE_NAME,
@@ -106,7 +94,7 @@ async def list_resources() -> List[Resource]:
             
             resources = []
             for table in tables:
-                resource = Resource(
+                resource = types.Resource(
                     id=table['TABLE_NAME'],
                     type="table",
                     attributes={
@@ -117,40 +105,16 @@ async def list_resources() -> List[Resource]:
                     }
                 )
                 resources.append(resource)
-            
             return resources
-    except Exception as e:
-        logger.error(f"Error listing resources: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
 
-@app.get("/resources/{resource_id}")
-async def get_resource(resource_id: str) -> Dict[str, Any]:
-    """
-    Retrieves the contents of a specific table.
-    
-    Args:
-        resource_id (str): The name of the table to query
-    
-    Returns:
-        Dict[str, Any]: Dictionary containing the table's rows
-    
-    Raises:
-        HTTPException: If table doesn't exist or query fails
-    
-    Example Response:
-        {
-            "data": [
-                {"id": 1, "name": "John Doe", "email": "john@example.com"},
-                {"id": 2, "name": "Jane Smith", "email": "jane@example.com"}
-            ]
-        }
-    """
+@server.read_resource()
+async def handle_read_resource(resource_id: str) -> types.ResourceContent:
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
-            # First verify the table exists to provide better error messages
+            # Verify table exists
             cur.execute("""
                 SELECT TABLE_NAME 
                 FROM information_schema.TABLES 
@@ -159,81 +123,80 @@ async def get_resource(resource_id: str) -> Dict[str, Any]:
             """, (resource_id,))
             
             if not cur.fetchone():
-                raise HTTPException(status_code=404, detail="Resource not found")
+                raise ValueError("Resource not found")
             
-            # Get table contents
             cur.execute(f"SELECT * FROM {resource_id}")
             rows = cur.fetchall()
             
-            # Handle special SingleStore data types
-            for row in rows:
-                for key, value in row.items():
-                    if isinstance(value, (bytes, bytearray)):
-                        # Convert binary data (BSON, BLOB) to string representation
-                        row[key] = f"<binary data length={len(value)}>"
-            
-            return {"data": rows}
-    except Exception as e:
-        logger.error(f"Error getting resource {resource_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+            return types.ResourceContent(
+                type="application/json",
+                content=json.dumps({"data": rows})
+            )
     finally:
         conn.close()
 
-@app.post("/query")
-async def execute_query(request: QueryRequest) -> Dict[str, Any]:
-    """
-    Executes a custom SQL query with optional parameters.
-    
-    Args:
-        request (QueryRequest): Object containing the query and optional parameters
-    
-    Returns:
-        Dict[str, Any]: Query results or affected rows count
-    
-    Raises:
-        HTTPException: If query execution fails
-    
-    Example Request:
-        {
-            "query": "SELECT * FROM users WHERE age > %s",
-            "parameters": {"age": 21}
-        }
-    
-    Example Response (SELECT):
-        {
-            "data": [
-                {"id": 1, "name": "John", "age": 25},
-                {"id": 2, "name": "Jane", "age": 23}
+# Add tool capabilities for custom queries
+@server.list_tools()
+async def handle_list_tools() -> list[types.Tool]:
+    return [
+        types.Tool(
+            name="execute_query",
+            description="Execute a custom SQL query",
+            parameters=[
+                types.Parameter(
+                    name="query",
+                    description="SQL query to execute",
+                    required=True
+                ),
+                types.Parameter(
+                    name="parameters",
+                    description="Query parameters",
+                    required=False
+                )
             ]
-        }
-    
-    Example Response (INSERT/UPDATE/DELETE):
-        {
-            "affected_rows": 1
-        }
-    """
+        )
+    ]
+
+@server.call_tool()
+async def handle_call_tool(name: str, arguments: dict) -> list[types.Content]:
+    if name != "execute_query":
+        raise ValueError(f"Unknown tool: {name}")
+        
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
-            # Execute the query with parameters if provided
-            if request.parameters:
-                cur.execute(request.query, request.parameters)
+            if arguments.get("parameters"):
+                cur.execute(arguments["query"], arguments["parameters"])
             else:
-                cur.execute(request.query)
+                cur.execute(arguments["query"])
             
-            # Return results for SELECT queries
             if cur.description:
                 rows = cur.fetchall()
-                return {"data": rows}
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"data": rows})
+                )]
             else:
-                # Return affected rows count for INSERT/UPDATE/DELETE
-                return {"affected_rows": cur.rowcount}
-    except Exception as e:
-        logger.error(f"Query execution error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"affected_rows": cur.rowcount})
+                )]
     finally:
         conn.close()
 
+# Main entry point
+async def main():
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            mcp.server.models.InitializationOptions(
+                server_name="singlestore",
+                server_version="0.1.0",
+                capabilities=server.get_capabilities()
+            )
+        )
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    import asyncio
+    asyncio.run(main()) 
